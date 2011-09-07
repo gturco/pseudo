@@ -12,18 +12,18 @@ from merge import merge_same_hits, merge
 
 class TestPseudo(unittest.TestCase):
     def setUp(self):
-        self.sbed = Bed("/Users/gturco/rice_v6.bed", "/Users/gturco/rice_v6.fasta") ;self.sbed.fill_dict()
-        self.missed_bed = Bed("/Users/gturco/missed_rice_v6_from_setaria64.bed") 
-        self.matches = "/Users/gturco/missed_rice_v6_from_setaria64.matches.txt"
+        self.sbed = Bed("data/rice_v6_sorghum_v1/rice_v6.bed", "data/rice_v6_sorghum_v1/rice_v6.fasta") ;self.sbed.fill_dict()
+        self.missed_bed = Bed("data/rice_v6_sorghum_v1/missed_rice_v6_from_setaria64.bed") 
+        self.matches = "data/rice_v6_sorghum_v1/missed_rice_v6_from_setaria64.matches.txt"
     def test_mask_non_cds(self):
         """test for test_mask_non_cds TODO mask inbetween genes currently does
         not mask inbetween genes"""
         for seqid, seq in mask_non_cds(self.sbed,'N', None):
-            f = ("/Users/gturco/{0}.fasta".format(seqid))
+            f = ("data/rice_v6_sorghum_v1/{0}.fasta".format(seqid))
             fh = open(f, "wb")
             print >> fh,seq
             fh.close()
-        handle = open("/Users/gturco/1.fasta")
+        handle = open("data/rice_v6_sorghum_v1/1.fasta")
         fh = handle.read()
         # double checked these are starts and ends acorrding to coge and match
         # with other fasta
@@ -41,12 +41,16 @@ class TestPseudo(unittest.TestCase):
     def test_merge_same_hits(self):
         """confrim that genes are being grouped correctly"""
         merge_same_hits(self.missed_bed, self.matches, self.sbed)
-        merge(self.sbed, Bed("/Users/gturco/missed_from_rice.bed"),"/Users/gturco/rice_v6.all.bed")
-        new_bed = Bed('/Users/gturco/rice_v6.all.bed')
+        merge(self.sbed, Bed("data/rice_v6_sorghum_v1/missed_from_rice.bed"),"data/rice_v6_sorghum_v1/rice_v6.all.bed")
+        new_bed = Bed('data/rice_v6_sorghum_v1/rice_v6.all.bed')
         self.assertEqual(new_bed.accn('rice_v6_3_13648324_13648522')['locs'][0][0],13648324)
         self.assertEqual(len(new_bed.accn('rice_v6_3_13648324_13648522')['locs']),1)
         self.assertEqual(len(new_bed.accn('rice_v6_1_19308831_19309020')['locs']),3)
-
+	# groups to find new genes
+	self.assertEqual(len(new_bed.accn('Os09g38268')['locs']),6)
+	# groups exsting genes
+	self.assertEqual(new_bed.accn('Os03g61610')['start'],34920211)
+	# confrim not renaming var and giving wrong start
 if __name__ == '__main__':
     unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSequenceFunctions)

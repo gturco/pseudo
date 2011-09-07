@@ -7,7 +7,7 @@ def get_intervening_genes(start,end,seqid, main,saccn):
     intervening_genes = True
     if len(accns)==0 or saccn in accns and len(accns)==1:
         intervening_genes = False
-    if abs(end - start) > 2500:
+    if abs(end - start) > 7500:
         intervening_genes = True
     return intervening_genes
 
@@ -16,7 +16,7 @@ def merge_same_hits(missed, fh_match, main):
     d = {}
     handle = open(fh_match)
     matches = handle.read()
-    fh = open('missed_from_rice.bed', "wb")
+    fh = open('data/rice_v6_sorghum_v1/missed_from_sorghum.bed', "wb")
     for match in matches.split('\n')[:-1]:
         qaccn,saccn = match.split('\t')
         #create dictionary
@@ -38,21 +38,22 @@ def merge_same_hits(missed, fh_match, main):
                 if intervening_genes is False:
                     d[(seqid,saccn)]['locs'] =  d[(seqid,saccn)]['locs'] + missed.accn(qaccn)['locs']
                     d[(seqid,saccn)]['start'] = missed_start
-                else:
+		    if 'Os' in qaccn:
+		    	d[seqid,saccn]['accn'] = qaccn
+		else:
                     d[(seqid,qaccn)]= missed.accn(qaccn)
             elif gene_end < missed_start:
                 intervening_genes = get_intervening_genes(gene_end,missed_start,seqid, main,d[(seqid,saccn)]["accn"])
                 if intervening_genes is False:
                     d[(seqid,saccn)]['locs'] =  d[(seqid,saccn)]['locs'] + missed.accn(qaccn)['locs']
                     d[(seqid,saccn)]['end'] = missed_end
+		    if 'Os' in qaccn:
+			d[seqid,saccn]['accn'] = qaccn
                 else:
                     d[(seqid,qaccn)]= missed.accn(qaccn)
-
             else:
                 d[(seqid,saccn)]['locs'] =  d[(seqid,saccn)]['locs'] + missed.accn(qaccn)['locs']
         
-        if 'Os' in qaccn:
-            d[seqid,saccn]['accn'] = qaccn
     for key in d.keys():
         new_row = d[key]['locs'].sort()
         row = d[key]
@@ -100,7 +101,7 @@ def merge(main, missed, merge_file):
     for i, row in enumerate(new_rows):
         print >>merge_fh, Bed.row_string(row)
 
-#merge(Bed('rice_v6.bed'),Bed('missed_from_rice.bed'),'rice_v6.all.bed')
-#merge_same_hits(Bed('missed_rice_v6_from_sorghum_v1.bed'),'missed_rice_v6_from_sorghum_v1.matches.txt',Bed('rice_v6.bed'))
+merge(Bed('data/rice_v6_sorghum_v1/sorghum_v1.bed'),Bed('data/rice_v6_sorghum_v1/missed_from_sorghum.bed'),'data/rice_v6_sorghum_v1/sorghum_v1.all.bed')
+#merge_same_hits(Bed('data/rice_v6_sorghum_v1/missed_sorghum_v1_from_rice_v6.bed'),'data/rice_v6_sorghum_v1/missed_sorghum_v1_from_rice_v6.matches.txt',Bed('data/rice_v6_sorghum_v1/sorghum_v1.bed'))
 
 
