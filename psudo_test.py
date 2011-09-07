@@ -23,7 +23,6 @@ class TestPseudo(unittest.TestCase):
             fh = open(f, "wb")
             print >> fh,seq
             fh.close()
-
         handle = open("/Users/gturco/1.fasta")
         fh = handle.read()
         # double checked these are starts and ends acorrding to coge and match
