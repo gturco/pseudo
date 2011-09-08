@@ -33,7 +33,7 @@ def get_mask_non_cds(bed):
     except OSError: pass
 
     fastas = {}
-    for seqid, seq in mask_non_cds(bed):
+    for seqid, seq in mask_non_cds(bed, 'N', None):
         f = d + "/{0}.fasta".format(seqid)
         fastas[seqid] = f
         if op.exists(f): continue
@@ -127,7 +127,7 @@ def main(qbed,sbed,missed_pairs, ncpu):
             subject_file = sfastas[gene['seqid']]
 
             cmd = tblastx.format(query_file, subject_file, hstart, hstop, gstart, gstop)
-            print >> sys.stderr, cmd
+            print >> sys.stderr,'{0},{1},{2}'.format(hit,gene,cmd)
             return cmd, hit, gene
         cmd = [c for c in map(get_blastx_cmd, [l for l in pairs if l]) if c]
        # results = (r for r in pool.map(commands.getoutput,[c[0]for c in cmds]))
@@ -142,7 +142,7 @@ def main(qbed,sbed,missed_pairs, ncpu):
                 if float(values[2]) >= 70.0:
                     tblastx_hits.append((percent_int,evalue))
             if len(tblastx_hits) == 0: continue
-            w = "{0}\t{1}\t{2}\t".format(hit, gene, ",".join(tblastx_hits))
+            w = "{0}\t{1}\t{2}\t".format(hit['accn'], gene['accn'], ",".join(tblastx_hits))
             print >> sys.stdout, w
 
 
@@ -151,15 +151,15 @@ if __name__ == '__main__':
     import optparse
     parser = optparse.OptionParser("usage: %prog [options] ")
     parser.add_option("-n", dest="ncpu", help="parallelize to this many cores", type='int', default=2)
-    parser.add_option("--qbed", dest="qbed". help="query bed file/bed file with  hits/new genes")
+    parser.add_option("--qbed", dest="qbed", help="query bed file/bed file with  hits/new genes")
     parser.add_option("--sbed", dest="sbed", help="subject bed file/ exsiting genes" )
     parser.add_option("--qfasta", dest="qfasta", help="query fasta file/hits/new genes")
     parser.add_option("--sfasta", dest="sfasta", help="subject fasta file /exsiting genes")
-    parser.add_option("--miss", dest="missed_pairs", help="missed pairs file query_missed_from_subject.matches"
+    parser.add_option("--miss", dest="missed_pairs", help="missed pairs file query_missed_from_subject.matches") 
     (options, _) = parser.parse_args()
 
     sbed = Bed(options.sbed, options.sfasta); sbed.fill_dict()
     qbed = Bed(options.qbed, options.qfasta); qbed.fill_dict()
-    main(options.qbed,options.sbed,options.missed_pairs,options.ncpu)
+    main(qbed,sbed,options.missed_pairs,options.ncpu)
 
 

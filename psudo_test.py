@@ -51,6 +51,7 @@ class TestPseudo(unittest.TestCase):
 	# groups exsting genes
 	self.assertEqual(new_bed.accn('Os03g61610')['start'],34920211)
 	# confrim not renaming var and giving wrong start
+    # add intersection test...
 if __name__ == '__main__':
     unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSequenceFunctions)

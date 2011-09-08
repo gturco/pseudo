@@ -15,6 +15,7 @@ def mask_non_cds(bed, mask_with, out):
             non_cds.append((cds[-1][1], row['end']+1))
             for start ,end in non_cds:
                 assert start <= end, (start,end,row)
+                #write these to a file
                 fa[start: end-1] = mask_with
         assert s == fa.shape[0]
         if out is None:
