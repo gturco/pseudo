@@ -25,6 +25,32 @@ from mask_non_cds import mask_non_cds
 
 pool = None
 
+
+def group_cds(blast, qaccn):
+    cds = qaccn['locs']
+    group_list = [(start,end) for (start,end) in cds]
+    d = {key:[] for key in group_list}
+    psudo = {}
+    for line in blast_str.split("\n"):
+        if "WARNING" in line: continue
+        if "ERROR" in line: continue
+        line = line.split("\t")
+        locs  = map(int, line[6:10])
+        locs.extend(map(float,line[10:]))
+        length,percent = line[2:4]
+        psudo[locs] = (length,percent)
+        [d[group_key].append(psudo_d) for group_key in group_list if cns['start'] in range(group_key[0],group_key[1])]
+    return d, psudo
+#
+#    for group_key in d.keys():
+#        all_hits = [locs for locs in d[group_cds]['locs']]
+#        cns  = remove_crossing_cns(all_hits,qaccn,saccn)
+#        best_hit = max(cns['lenght'])
+#        best_hits.append(best_hit)
+#    avg(best_hits)
+#    if avg > 70:
+#        print
+
 def get_mask_non_cds(bed):
     f = bed.fasta.fasta_name
     fname = op.splitext(op.basename(f))[0]
@@ -133,14 +159,8 @@ def main(qbed,sbed,missed_pairs, ncpu):
        # results = (r for r in pool.map(commands.getoutput,[c[0]for c in cmds]))
         for res, (cmd, hit, gene) in zip(results,cmd):
             tblastx_hits = []
-            for line in res.split("\n"):
-                if "WARNING:" in line: continue
-                if "ERROR" in line: continue
-                values = line.split("\t")
-                percent_idt = values[2]
-                evalue = values[10]
-                if float(values[2]) >= 70.0:
-                    tblastx_hits.append((percent_int,evalue))
+            if float(values[2]) >= 70.0:
+                tblastx_hits.append((percent_int,evalue))
             if len(tblastx_hits) == 0: continue
             w = "{0}\t{1}\t{2}\t".format(hit['accn'], gene['accn'], ",".join(tblastx_hits))
             print >> sys.stdout, w
