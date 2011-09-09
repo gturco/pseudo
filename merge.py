@@ -84,7 +84,7 @@ def merge(main, missed, merge_file):
         [locs_interval.add_interval(Feature(start,stop)) for start,stop in main_row['locs']]
         for missed_start,missed_end in row_missed['locs']:
             if len(locs_interval.find(missed_start,missed_end)) > 0:
-                print >>sys.stderr, main_row['accn']
+#                print >>sys.stderr, main_row['accn']
                 locs_intersects = {(l.start,l.stop) for l in locs_interval.find(missed_start,missed_end)}
                 [main_row['locs'].remove(locs_intersect) for locs_intersect in locs_intersects]
                 locs_intersects.add((missed_start,missed_end))
@@ -96,8 +96,8 @@ def merge(main, missed, merge_file):
         main_row['locs'] = main_row['locs'] + row_missed['locs']
         #print >>sys.stderr, "{0},{1}".format(row_missed['accn'], locs)
         main_row['locs'].sort()
-        main_row['start'] = min(min(main_row['locs'])[0], main_row['start'])
-        main_row['end'] = max(max(main_row['locs'])[1], main_row['end'])
+        main_row['start'] = min(min([start for start,end in main_row['locs']]), main_row['start'])
+        main_row['end'] = max(max([end for start,end in main_row['locs']]), main_row['end'])
         new_rows.append(main_row)
         seen_accns[main_row['accn']] =True
 
@@ -115,7 +115,6 @@ def merge(main, missed, merge_file):
     for i, row in enumerate(new_rows):
         print >>merge_fh, Bed.row_string(row)
 
-#merge(Bed('data/rice_v6_setaria64/setaria64.bed'),Bed('data/rice_v6_setaria64/missed_from_setaria64.bed'),'data/rice_v6_setaria64/setaria64.all.bed')
+merge(Bed('data/rice_v6_setaria64/setaria64.bed'),Bed('data/rice_v6_setaria64/missed_from_setaria64.bed'),'data/rice_v6_setaria64/setaria64.all.bed')
 #merge_same_hits(Bed('data/rice_v6_setaria64/missed_setaria64_from_rice_v6.bed'),'data/rice_v6_setaria64/missed_setaria64_from_rice_v6.matches.txt',Bed('data/rice_v6_setaria64/setaria64.bed'))
-
 
