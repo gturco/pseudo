@@ -14,40 +14,64 @@ starts.. makes easier for that"""
 import os
 import os.path as op
 import commands
+import operator
 from flatfeature import Bed
 import numpy as np
 from processing import Pool
 import sys
 sys.path.append("/Users/gturco/code/freeling_lab/find_cns_gturco/pipeline/scripts/")
-from find_cns import get_pair
+from find_cns import get_pair, remove_crossing_cnss
 from mask_non_cds import mask_non_cds
 
 
 pool = None
 
 
-def group_cds(blast, qaccn):
+def group_cds(blast_res, qaccn):
     cds = qaccn['locs']
     group_list = [(start,end) for (start,end) in cds]
     d = {key:[] for key in group_list}
     psudo = {}
-    for line in blast_str.split("\n"):
+    blast_fh = open(blast_res)
+    blast_str = blast_fh.read()
+    for line in blast_str.split("\n")[:-1]:
         if "WARNING" in line: continue
         if "ERROR" in line: continue
         line = line.split("\t")
         locs  = map(int, line[6:10])
         locs.extend(map(float,line[10:]))
-        length,percent = line[2:4]
-        psudo[locs] = (length,percent)
-        [d[group_key].append(psudo_d) for group_key in group_list if cns['start'] in range(group_key[0],group_key[1])]
+        percent,length = line[2:4]
+        psudo[str(tuple(locs[:-1]))] = (length,percent)
+        [d[group_key].append(tuple(locs)) for group_key in group_list if locs[0] in range(group_key[0],group_key[1])]
     return d, psudo
-#
-#    for group_key in d.keys():
-#        all_hits = [locs for locs in d[group_cds]['locs']]
-#        cns  = remove_crossing_cns(all_hits,qaccn,saccn)
-#        best_hit = max(cns['lenght'])
-#        best_hits.append(best_hit)
-#    avg(best_hits)
+
+def best_hit(d,qaccn,saccn,psudo):
+    qgene = [qaccn['start'], qaccn['end']]
+    sgene = [saccn['start'], saccn['end']]
+    best_hits = []
+    for group_key in d.keys():
+        all_hits = d[group_key]
+        orient = qaccn['strand'] == saccn['strand'] and 1 or -1
+        if orient == -1:
+            all_hits = list(all_hits)
+            for i, hit in enumerate(all_hits):
+                hit = list(hit)
+                hit[2] *= -1
+                hit[3] *= -1
+                hit[i] = tuple(hit)
+            sgene[0] *= -1
+            sgene[1] *= -1
+        non_crossing_hits = [(c[0], c[1], c[2], c[3], c[-2]) for c in remove_crossing_cnss(all_hits,qgene,sgene)]
+        if orient == -1:
+            non_crossing_hits == [(c[0],c[1],-c[2], -c[3], c[-1]) for c in remove_crossing_cnss(all_hits,qgene,sgene)]
+        non_crossing_dict = {str(locs):psudo[str(locs)] for locs in non_crossing_hits}
+        #best_hit = max(non_crossing_dict.iteritems(), key=operator.itemgetter(1))[0]
+        hit_lengths = [float(length) for (length,percent) in non_crossing_dict.values()]
+        best_hits.append(sum(hit_lengths))
+    total_cds = sum([abs(qstart-qend) for (qstart,qend) in d.keys()])
+    total_hits = sum(best_hits)*3
+    x = (total_hits/float(total_cds))
+    print >>sys.stderr, x
 #    if avg > 70:
 #        print
 
