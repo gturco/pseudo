@@ -17,7 +17,11 @@ def merge_same_hits(missed, fh_match, main):
     d = {}
     handle = open(fh_match)
     matches = handle.read()
-    fh = open('data/rice_v6_setaria64/missed_from_setaria64.bed', "wb")
+    main_path = main.path
+    path = main_path.split('/')
+    dirc = '/'.join(path[:-1])
+    org = path[-1]
+    fh = open('{0}/missed_from_{1}'.format(dirc,org), "wb")
     for match in matches.split('\n')[:-1]:
         qaccn,saccn = match.split('\t')
         #create dictionary
@@ -115,6 +119,6 @@ def merge(main, missed, merge_file):
     for i, row in enumerate(new_rows):
         print >>merge_fh, Bed.row_string(row)
 
-merge(Bed('data/rice_v6_setaria64/setaria64.bed'),Bed('data/rice_v6_setaria64/missed_from_setaria64.bed'),'data/rice_v6_setaria64/setaria64.all.bed')
-#merge_same_hits(Bed('data/rice_v6_setaria64/missed_setaria64_from_rice_v6.bed'),'data/rice_v6_setaria64/missed_setaria64_from_rice_v6.matches.txt',Bed('data/rice_v6_setaria64/setaria64.bed'))
+#merge(Bed('data/peach_coco/peach.bed'),Bed('data/peach_coco/missed_from_peach.bed'),'data/peach_coco/peach.all.bed')
+#merge_same_hits(Bed('data/peach_coco/missed_peach_from_coco.bed'),'data/peach_coco/missed_peach_from_coco.matches.txt',Bed('data/peach_coco/peach.bed'))
 

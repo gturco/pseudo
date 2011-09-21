@@ -24,9 +24,19 @@ def mask_non_cds(bed, mask_with, out):
             print >> out, ">%s\n%s" % (seqid, fa.tostring())
 
 
-#qbed = Bed('/Users/gturco/rice_v6.bed','/Users/gturco/rice_v6.fasta'); qbed.fill_dict()
-#for seqid, seq in mask_non_cds(qbed,'N',None):
-#    f = "/Users/gturco/{0}.fasta".format(seqid)
+#bed = Bed('/Users/gturco/setaria64.bed','/Users/gturco/setaria64.fasta'); bed.fill_dict()
+##for seqid, seq in mask_non_cds(qbed,'N',None):
+##    f = "/Users/gturco/{0}.fasta".format(seqid)
+##    fh = open(f,'wb')
+##    print >> fh, seq
+##    fh.close
+#
+#for seqid in bed.fasta.keys():
+#    f = "/Users/gturco/setaria64_split/{0}.fasta".format(seqid)
 #    fh = open(f,'wb')
+#    fa = np.array(bed.fasta[seqid], dtype='c')
+#    seq = fa.tostring()
 #    print >> fh, seq
-#    fh.close
+#    fh.close()
+
+
