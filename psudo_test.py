@@ -9,11 +9,12 @@ logging.basicConfig(level=logging.INFO)
 sys.path.append("../scripts")
 from flatfeature import Bed
 from pseudo import bites, group_cds,main, remove_crossing_hits, append_to_included_groups
+from orf import find_orf
 
 class TestPseudo(unittest.TestCase):
     def setUp(self):
-        self.qallbed = Bed('data/rice_v6_setaria64/rice_v6.all.bed')
-        self.sallbed = Bed('data/rice_v6_setaria64/setaria64.all.bed')
+        self.qallbed = Bed('data/rice_v6_setaria64/rice_v6.all.bed','data/rice_v6_setaria64/rice_v6.fasta') ;self.qallbed.fill_dict()
+        self.sallbed = Bed('data/rice_v6_setaria64/setaria64.all.bed','data/rice_v6_setaria64/setaria64.fasta') ;self.sallbed.fill_dict()
         self.saccn = self.sallbed.accn('Si000834m')
         blastfh = open('blast_res')
         self.blast = blastfh.read()
@@ -55,13 +56,16 @@ class TestPseudo(unittest.TestCase):
             non_crossing =remove_crossing_hits(exon_hits,qaccn,self.saccn)
             if len(non_crossing) > 1:
                 mid,start,stop =bites(non_crossing)
-#   def main(self):
 
-   # def test_find_orf(self):
-   #     qaccn = self.sbed.accn('Os01g01295')
-   #     orf = find_orf(self.sbed, qaccn)
-   #     self.assertEqual(orf+1, 141084)
+    def test_find_orf(self):
+        qaccn = self.qallbed.accn('Os01g01295')
+        orf = find_orf(self.qallbed, qaccn)
+        self.assertEqual(orf+1, 141084)
 
+    def test_find_orf_neg(self):
+        saccn = self.sallbed.accn('Si001539m')
+        orf = find_orf(self.sallbed,saccn)
+        self.assertEqual(orf,7662777)
 if __name__ == '__main__':
     unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSequenceFunctions)

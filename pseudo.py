@@ -26,6 +26,7 @@ from pyfasta import Fasta
 import re
 import logging
 from shapely.geometry import LineString
+from orf import find_orf
 pool = None
 logging.basicConfig(level=logging.INFO)
 
@@ -46,7 +47,7 @@ def group_cds(blast_str, ref_gene):
         line = line.split("\t")
         locs  = map(int, line[6:10])
         locs.extend(map(float,line[10:]))
-        print >>sys.stderr,'llllllllllllllll{0}'.format(line)
+        #print >>sys.stderr,'llllllllllllllll{0}'.format(line)
         percent,length =map(float,line[2:4])
         psudo[str(tuple(locs[:-1]))] = (length,percent)
         #logging.info("locs:{0}".format(locs))
@@ -208,19 +209,21 @@ def main(qbed,sbed,missed_pairs, ncpu):
             d,psdu = group_cds(res, gene)
             gap_list =[]
             intron_list = []
+            hit['locs'] = []
             for group_key in d.keys():
                 exon_hits = d[group_key]
                 non_crossing = remove_crossing_hits(exon_hits,hit,gene)
                 if len(non_crossing) > 1:
                     gaps,hstart,hend =bites(non_crossing)
                     gap_list.append(map(str,gaps))
+                if len(non_crossing) >= 1:
                     intron_list.append(group_key[0])
-                if len(non_crossing) == 1:
-                    intron_list.append(group_key[0])
+                    hit['locs'].append((hstart,hend))
+            orf = find_orf(qbed,hit)
             introns = "{0}/{1}".format(len(intron_list),len(gene['locs']))
             gap_list = map(str,gap_list)
-            w ="{0},{1},{2},{3}".format(hit['accn'],gene['accn'],"/t".join(gap_list),introns)
-            print >> sys.stdout, w
+            w ="{0},{1},{2},{3},orf:{4}".format(hit['accn'],gene['accn'],"\t".join(gap_list),introns,orf)
+            print >>sys.stdout, w
 #            if float(values[2]) >= 70.0:
 #                blastn_hits.append((percent_int,evalue))
 #            if len(tblastx_hits) == 0: continue
