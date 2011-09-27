@@ -24,11 +24,12 @@ from find_cns import get_pair, remove_crossing_cnss
 from mask_non_cds import mask_non_cds
 from pyfasta import Fasta
 import re
-import logging
+#import logging
 from shapely.geometry import LineString
 from orf import find_orf
 pool = None
-logging.basicConfig(level=logging.INFO)
+from protein import protein_parse
+#logging.basicConfig(level=logging.INFO)
 
 def group_cds(blast_str, ref_gene):
     """groups blast hits to the ref gene
@@ -37,23 +38,19 @@ def group_cds(blast_str, ref_gene):
     cds = ref_gene['locs']
     group_list = [(start,end) for (start,end) in cds]
     d = {key:[] for key in group_list}
-    psudo = {}
-    #blast_fh = open(blast_str)
-    #blast_str = blast_fh.read()
+    no_res = True
     for line in blast_str.split("\n"):
         if not line: continue
         if "WARNING" in line: continue
         if "ERROR" in line: continue
+        no_res = False
         line = line.split("\t")
         locs  = map(int, line[6:10])
         locs.extend(map(float,line[10:]))
-        #print >>sys.stderr,'llllllllllllllll{0}'.format(line)
         percent,length =map(float,line[2:4])
-        psudo[str(tuple(locs[:-1]))] = (length,percent)
-        #logging.info("locs:{0}".format(locs))
-        #logging.info("d:{0}".format(d))
+       #psudo[str(tuple(locs[:-1]))] = (length,percent)
         append_to_included_groups(locs, d)
-    return d, psudo
+    return d, no_res
 
 def append_to_included_groups(locs, d):
     for group_key in d.keys():
@@ -68,13 +65,13 @@ def remove_crossing_hits(exon_hits,qfeat,sfeat):
         qgene =[qfeat['start'], qfeat['end']]
         sgene =[sfeat['start'], sfeat['end']]
         orient = qfeat['strand'] == sfeat['strand'] and 1 or -1
+        exon_hits = list(exon_hits)
         if orient == -1:
-            exon_hits = list(exon_hits)
             for i, hit in enumerate(exon_hits):
                 hit = list(hit)
                 hit[2] *= -1
                 hit[3] *= -1
-                hit[i] = tuple(hit)
+                exon_hits[i] = tuple(hit)
             sgene[0] *= -1
             sgene[1] *= -1
         non_crossing_hits = [(c[0], c[1], c[2], c[3], c[-2]) for c in remove_crossing_cnss(exon_hits,qgene,sgene)]
@@ -93,16 +90,6 @@ def bites(hit_dict):
     start = min(x)[0]
     stop= max(x)[1]
     return mid,start,stop
-
-#        #best_hit = max(non_crossing_dict.iteritems(), key=operator.itemgetter(1))[0]
-#        hit_lengths = [float(length) for (length,percent) in non_crossing_dict.values()]
-#        best_hits.append(sum(hit_lengths))
-#    total_cds = sum([abs(qstart-qend) for (qstart,qend) in d.keys()])
-#    total_hits = sum(best_hits)*3
-#    x = (total_hits/float(total_cds))
-#    print >>sys.stderr, x
-##    if avg > 70:
-##        print
 
 def get_mask_non_cds(bed):
     f = bed.fasta.fasta_name
@@ -168,14 +155,14 @@ def get_pairs_file(missed_pair_file):
 #get_pairs_file("/Users/gturco/missed_exons/missed_rice_v6_from_sorghum_v1.matches.txt")
 def main(qbed,sbed,missed_pairs, ncpu):
     """run tblastx on missed pairs..."""
+    #print >>sys.stderr,ncpu
+    ncpu = int(ncpu)
     pool = Pool(ncpu)
-
     pairs_file = get_pairs_file(missed_pairs)
-
-    #tblastx = "/home/gturco/src/blast-2.2.25/bin/bl2seq -p tblastx -G 11 -E 1 -W 3 -e 1e-10 -D 1 -i {0} -j {1} -I {2},{3} -J {4},{5}"
+    print >>sys.stdout, "#hit,ref_gene,blastn_introns,blastx_hits, blastx_gene_hits, blastx_frame, blastn_gaps, blastx_gaps,orf_perdiction,orf_blastx,frame_shift"
     blastn = "/Users/gturco/blast-2.2.25/bin/bl2seq -p blastn -G 5 -E 2 -W 7 -q -2 -e 0.001 -D 1 -i {0} -j {1} -I {2},{3} -J {4},{5} | grep -v '#' | grep -v 'WARNING' | grep -v 'ERROR' "
-    qfastas = split_fastas(qbed)#remians unmasked
-    sfastas = split_fastas(sbed) #mask noncoding
+    qfastas = split_fastas(qbed)#MASK CODING
+    sfastas = get_mask_non_cds(sbed) #mask noncoding
 
     pairs = [True]
     _get_pair_gen = get_pair(pairs_file,"pair", qbed,sbed)
@@ -195,34 +182,46 @@ def main(qbed,sbed,missed_pairs, ncpu):
             # double check fasta to make sure i dont need to add or remove one
             gstart,gstop = gene['start'],gene['end']
             # checks the entire gene...
-            # do we want to add padding?
             query_file = qfastas[hit['seqid']]
             subject_file = sfastas[gene['seqid']]
 
-            cmd = blastn.format(query_file, subject_file, hstart, hstop, gstart, gstop)
+            blastn_cmd = blastn.format(query_file, subject_file, hstart, hstop, gstart, gstop)
             #print >> sys.stderr,'{0},{1},{2}'.format(hit['accn'],gene['accn'],cmd)
             
-            return cmd, hit, gene
+            return blastn_cmd,hit, gene
+        
         cmds = [c for c in map(get_blastn_cmd, [l for l in pairs if l]) if c]
-        results = (r for r in pool.map(commands.getoutput,[c[0]for c in cmds]))
+        #print >>sys.stderr, "results: {0}".format(cmds[0][0])
+        results = (r for r in pool.map(commands.getoutput,[c[0] for c in cmds]))
         for res, (cmd, hit, gene) in zip(results,cmds):
-            d,psdu = group_cds(res, gene)
+            print >>sys.stderr, "CMD: {0},{1}".format(gene['accn'],hit['accn'])
+            d,no_res = group_cds(res, gene)
             gap_list =[]
             intron_list = []
             hit['locs'] = []
+            if no_res == True: continue
             for group_key in d.keys():
                 exon_hits = d[group_key]
                 non_crossing = remove_crossing_hits(exon_hits,hit,gene)
                 if len(non_crossing) > 1:
                     gaps,hstart,hend =bites(non_crossing)
-                    gap_list.append(map(str,gaps))
+                    gap_list.append(sum(gaps))
+                elif len(non_crossing) == 1:
+                   # print >>sys.stderr, non_crossing
+                    [(hstart,hend,sstart,send,evalue)] = non_crossing
                 if len(non_crossing) >= 1:
                     intron_list.append(group_key[0])
                     hit['locs'].append((hstart,hend))
-            orf = find_orf(qbed,hit)
+            hit['locs'].sort()
+            #print >>sys.stderr, "hit_loc : {0}".format(hit['locs'])
+            if len(hit['locs']) < 1: continue
+            orf_prediction = find_orf(qbed,hit)
             introns = "{0}/{1}".format(len(intron_list),len(gene['locs']))
-            gap_list = map(str,gap_list)
-            w ="{0},{1},{2},{3},orf:{4}".format(hit['accn'],gene['accn'],"\t".join(gap_list),introns,orf)
+            gap_totaln = sum(gap_list)
+            # new hit locs made from blastn res
+            hit_percent, gene_percent, frame_percent,frame_shift, best_frame, gap_total,orf_start= protein_parse(hit,gene,sbed,qbed)
+            orf_start = abs(min(hit['locs'][0]) + int(orf_start))
+            w ="{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10}".format(hit['accn'],gene['accn'],introns,hit_percent,gene_percent, frame_percent,gap_totaln,gap_total,orf_prediction,orf_start,frame_shift)
             print >>sys.stdout, w
 #            if float(values[2]) >= 70.0:
 #                blastn_hits.append((percent_int,evalue))
